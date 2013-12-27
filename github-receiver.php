@@ -1,11 +1,11 @@
-<?php 
+<?php
 /*
 Plugin Name: Github Receiver
 Plugin URI: https://github.com/cftp/github-receiver
 Description: Provides an endpoint for the Github Post-Receive Webhook to ping, allowing WordPress to create a post for each Github commit.
 Version: 1.3
 Author: Code for the People
-Author URI: http://www.codeforthepeople.com/ 
+Author URI: http://www.codeforthepeople.com/
 */
 
 /*  Copyright 2013 Code for the People Ltd
@@ -42,16 +42,16 @@ if ( defined( 'WP_CLI' ) && WP_CLI && is_readable( $wp_cli = dirname( __FILE__ )
 if ( !defined( 'ABSPATH' ) ) exit;
 
 class CFTP_Github_Webhook_Receiver {
-	
+
 	/**
 	 * A version for cache busting, DB updates, etc.
 	 *
 	 * @var string
 	 **/
 	public $version;
-	
+
 	/**
-	 * An array of allowed remote IP addresses 
+	 * An array of allowed remote IP addresses
 	 *
 	 * @var array
 	 **/
@@ -59,9 +59,9 @@ class CFTP_Github_Webhook_Receiver {
 
 	/**
 	 * Singleton stuff, purloined from Jetpack
-	 * 
+	 *
 	 * @access @static
-	 * 
+	 *
 	 * @return void
 	 */
 	static public function init() {
@@ -75,12 +75,12 @@ class CFTP_Github_Webhook_Receiver {
 		return $instance;
 
 	}
-	
+
 	/**
 	 * Let's go!
 	 *
 	 * @access public
-	 * 
+	 *
 	 * @return void
 	 **/
 	public function __construct() {
@@ -95,36 +95,36 @@ class CFTP_Github_Webhook_Receiver {
 		add_filter( 'query_vars',     array( $this, 'filter_query_vars' ) );
 
 		$this->version = 1;
-		// $this->allowed_remote_ips = array( 
-		// 	'108.171.174.178', 
-		// 	'207.97.227.253', 
-		// 	'50.57.128.197', 
-		// 	'50.57.231.61,' 
+		// $this->allowed_remote_ips = array(
+		// 	'108.171.174.178',
+		// 	'207.97.227.253',
+		// 	'50.57.128.197',
+		// 	'50.57.231.61,'
 		// );
 	}
 
 	// HOOKS
 	// =====
-	
+
 	/**
 	 * Sets up the API endpoint which Github will ping with their
 	 * Post Receive Service Hook.
-	 * 
+	 *
 	 * @action init
-	 * 
+	 *
 	 * @return void
 	 */
 	public function action_init() {
 		add_rewrite_rule( 'commit-receiver/?$', 'index.php?cftp_commit_webhook=1', 'top' );
 		add_rewrite_rule( 'github-receiver/?$', 'index.php?cftp_commit_webhook=1', 'top' );
 	}
-	
+
 	/**
 	 * Sets up the API endpoint which Github will ping with their
 	 * Post Receive Service Hook.
-	 * 
+	 *
 	 * @action init
-	 * 
+	 *
 	 * @return void
 	 */
 	public function action_admin_init() {
@@ -133,9 +133,9 @@ class CFTP_Github_Webhook_Receiver {
 
 	/**
 	 * Adds the cftp_commit_webhook query var to WordPress.
-	 * 
+	 *
 	 * @filter query_vars
-	 * 
+	 *
 	 * @param array $query_vars
 	 * @return array The Query Vars
 	 */
@@ -145,13 +145,12 @@ class CFTP_Github_Webhook_Receiver {
 	}
 
 	/**
-	 * Detect and process any webhook pings before WP_Query 
+	 * Detect and process any webhook pings before WP_Query
 	 * gets involved.
-	 * 
-	 * @action parse_request 
-	 * 
+	 *
+	 * @action parse_request
+	 *
 	 * @param object $wp WP object, passed by reference (so no need to return)
-	 * @return void
 	 **/
 	public function action_parse_request( $wp ) {
 		if ( ! isset( $wp->query_vars[ 'cftp_commit_webhook' ] ) || ! $wp->query_vars[ 'cftp_commit_webhook' ] )
@@ -178,14 +177,14 @@ class CFTP_Github_Webhook_Receiver {
 		// yet deal with this event type.
 		return $this->terminate_failure( 'Unrecognised event' );
 	}
-	
+
 	// METHODS
 	// =======
-	
+
 	/**
 	 * Process a push type of webhook ping from GitHub.
-	 * 
-	 * @return void
+	 *
+//	 * @return void
 	 */
 	public function process_github_push() {
 
@@ -197,7 +196,7 @@ class CFTP_Github_Webhook_Receiver {
 		// Check for payload in the POSTed data
 		if ( ! isset( $_POST[ 'payload' ] ) || empty( $_POST[ 'payload' ] ) )
 			return $this->terminate_failure( 'No payload data found' );
-		
+
 		// Process the commits now
 		$payload = json_decode( stripslashes( $_POST[ 'payload' ] ) );
 
@@ -206,13 +205,13 @@ class CFTP_Github_Webhook_Receiver {
 		if ( isset( $payload->commits ) && is_array( $payload->commits ) )
 			foreach ( $payload->commits as & $commit_data )
 				$this->process_commit_data( $commit_data, $payload->repository->name, $branch_path );
-		
+
 		$this->terminate_ok();
 	}
 
 	/**
 	 * Process a push type of webhook ping from GitLab.
-	 * 
+	 *
 	 * @return void
 	 */
 	public function process_gitlab_push( $raw_body ) {
@@ -223,19 +222,19 @@ class CFTP_Github_Webhook_Receiver {
 		// Check for payload in the POSTed data
 		if ( ! isset( $payload->commits ) || ! is_array( $payload->commits ) )
 			return $this->terminate_failure( 'No commits found' );
-		
+
 		// Work out the branch path
 		$branch_path = str_replace( 'refs/heads', '', $payload->ref );
 		if ( isset( $payload->commits ) && is_array( $payload->commits ) )
 			foreach ( $payload->commits as & $commit_data )
 				$this->process_commit_data( $commit_data, $payload->repository->name, $branch_path );
-		
+
 		$this->terminate_ok();
 	}
 
 	/**
 	 * Create the WP post object for a GitHub commit.
-	 * 
+	 *
 	 * @param object $commit_data The Github commit data
 	 * @param string $repo_name The repo name
 	 * @param string $branch_path The branch path
@@ -250,20 +249,20 @@ class CFTP_Github_Webhook_Receiver {
 		// N.B. Posts get inserted in the order they are received, i.e.
 		// we don't set the post_date to the commit date as this proved
 		// to cause issues with the RSS feed.
-		
+
 		// Devise a title
 		$lines = explode( "\n", $commit_data->message );
 		$post_title = "[{$repo_name}{$branch_path}] " . $commit_data->author->name . ' – ' . strip_tags( $lines[ 0 ] );
-		
+
 		// Create the post
 		$post_data = array(
-			'post_title' => $post_title, 
+			'post_title' => $post_title,
 			'post_content' => wp_kses( $commit_data->message, $GLOBALS[ 'allowedposttags' ] ),
 			'post_status' => 'publish',
 		);
-		
+
 		$post_id = wp_insert_post( $post_data );
-		
+
 		// Save the Github URL
 		add_post_meta( $post_id, '_github_commit_url', $commit_data->url );
 		// Save the portion of the payload remating to this commit commit portion of the payload
@@ -272,7 +271,7 @@ class CFTP_Github_Webhook_Receiver {
 
 	/**
 	 * Return HTTP Status 400 and a text message, then exit.
-	 * 
+	 *
 	 * @return void
 	 */
 	public function terminate_failure( $msg = "Bad Request" ) {
@@ -280,10 +279,10 @@ class CFTP_Github_Webhook_Receiver {
 		echo strip_tags( $msg );
 		exit;
 	}
-	
+
 	/**
 	 * Return HTTP Status 200 and "OK", then exit.
-	 * 
+	 *
 	 * @return void
 	 */
 	public function terminate_ok() {
@@ -291,9 +290,9 @@ class CFTP_Github_Webhook_Receiver {
 		echo "OK";
 		exit;
 	}
-	
+
 	/**
-	 * Checks the DB structure is up to date, rewrite rules, 
+	 * Checks the DB structure is up to date, rewrite rules,
 	 * theme image size options are set, etc.
 	 *
 	 * @return void
@@ -302,7 +301,7 @@ class CFTP_Github_Webhook_Receiver {
 		global $wpdb;
 		$option_name = 'cftp_ghwr_version';
 		$version = absint( get_option( $option_name, 0 ) );
-		
+
 		// Debugging and dev:
 		// delete_option( "{$option_name}_running", true, null, 'no' );
 
